@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SignalFlow — AI Stock Advisor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon" aria-hidden="true">◈</span>
+          <div>
+            <h1>SignalFlow</h1>
+            <p>AI stock advisor</p>
+          </div>
+        </div>
+
+        <div class="market-switch" role="group" aria-label="Market region">
+          <span class="label">Market</span>
+          <div class="toggle-group">
+            <button type="button" class="market-btn active" data-market="us" id="btn-us">
+              <span class="flag">🇺🇸</span> United States
+            </button>
+            <button type="button" class="market-btn" data-market="ca" id="btn-ca">
+              <span class="flag">🇨🇦</span> Canada
+            </button>
+          </div>
+          <p class="market-hint" id="market-hint">NYSE & NASDAQ · USD</p>
+        </div>
+
+        <nav class="nav" aria-label="Main">
+          <button type="button" class="nav-item active" data-view="predictions">
+            <span class="nav-icon">◎</span> AI Predictions
+          </button>
+          <button type="button" class="nav-item" data-view="paper">
+            <span class="nav-icon">$</span> Paper Trading
+          </button>
+          <button type="button" class="nav-item" data-view="report">
+            <span class="nav-icon">◫</span> Daily Report
+          </button>
+          <button type="button" class="nav-item" data-view="organizer">
+            <span class="nav-icon">▤</span> Organizer
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <p class="disclaimer">
+            Live data is delayed; signals are rule-based, not professional advice. Not financial advice.
+          </p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 id="view-title">AI Predictions</h2>
+            <p class="subtitle" id="view-subtitle">Buy and sell signals ranked by model confidence</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="data-badge" id="data-badge" title="Data source">Connecting…</span>
+            <button type="button" class="btn btn-ghost" id="btn-refresh" title="Refresh live analysis" disabled>
+              ↻ Refresh
+            </button>
+            <span class="last-updated" id="last-updated"></span>
+          </div>
+        </header>
+
+        <!-- Predictions view -->
+        <section class="view active" id="view-predictions" aria-labelledby="view-title">
+          <p class="loading-banner" id="loading-banner" hidden>Fetching live market data…</p>
+          <p class="error-banner" id="error-banner" hidden></p>
+          <div class="stats-row" id="stats-row"></div>
+
+          <div class="panels">
+            <div class="panel panel-buy">
+              <div class="panel-head">
+                <h3>Buy</h3>
+                <span class="badge badge-buy" id="buy-count">0</span>
+              </div>
+              <ul class="signal-list" id="buy-list"></ul>
+            </div>
+            <div class="panel panel-hold">
+              <div class="panel-head">
+                <h3>Hold</h3>
+                <span class="badge badge-hold" id="hold-count">0</span>
+              </div>
+              <ul class="signal-list" id="hold-list"></ul>
+            </div>
+            <div class="panel panel-sell">
+              <div class="panel-head">
+                <h3>Sell</h3>
+                <span class="badge badge-sell" id="sell-count">0</span>
+              </div>
+              <ul class="signal-list" id="sell-list"></ul>
+            </div>
+          </div>
+
+          <p class="hint-text">Click any stock for <strong>candlestick chart</strong> + full thesis. Ensemble v3 uses 10 factors; conviction <strong>74–94%</strong>.</p>
+        </section>
+
+        <!-- Paper trading -->
+        <section class="view" id="view-paper" hidden>
+          <div class="paper-summary" id="paper-summary"></div>
+          <div class="paper-grid">
+            <div class="card">
+              <div class="card-head">
+                <h3>Open positions</h3>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-paper">Reset account</button>
+              </div>
+              <div class="table-wrap">
+                <table class="portfolio-table">
+                  <thead>
+                    <tr>
+                      <th>Symbol</th>
+                      <th>Shares</th>
+                      <th>Bought at</th>
+                      <th>Last</th>
+                      <th>P/L</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="paper-positions-body"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Trade log</h3></div>
+              <ul class="trade-log" id="trade-log"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Daily report -->
+        <section class="view" id="view-report" hidden>
+          <div class="report-toolbar">
+            <button type="button" class="btn btn-primary" id="btn-gen-report">Generate today's report</button>
+            <span class="last-updated" id="report-meta"></span>
+          </div>
+          <article class="daily-report" id="daily-report"></article>
+          <details class="report-history-wrap">
+            <summary>Previous reports</summary>
+            <ul class="report-history" id="report-history"></ul>
+          </details>
+        </section>
+
+        <!-- Organizer view -->
+        <section class="view" id="view-organizer" hidden>
+          <div class="organizer-grid">
+            <div class="card">
+              <div class="card-head">
+                <h3>Watchlist</h3>
+                <form class="inline-form" id="watchlist-form">
+                  <input
+                    type="text"
+                    id="watchlist-input"
+                    placeholder="Add symbol (e.g. AAPL)"
+                    maxlength="12"
+                    autocomplete="off"
+                  />
+                  <button type="submit" class="btn btn-primary">Add</button>
+                </form>
+              </div>
+              <ul class="watchlist" id="watchlist"></ul>
+            </div>
+
+            <div class="card card-wide paper-hub">
+              <div class="card-head">
+                <h3>Paper trading — all activity</h3>
+                <span class="paper-hub-meta" id="paper-hub-meta"></span>
+              </div>
+              <div class="paper-hub-stats" id="paper-hub-stats"></div>
+              <h4 class="subhead">Open paper positions (US &amp; CA)</h4>
+              <div class="table-wrap">
+                <table class="portfolio-table">
+                  <thead>
+                    <tr>
+                      <th>Market</th>
+                      <th>Symbol</th>
+                      <th>Shares</th>
+                      <th>Bought at</th>
+                      <th>Last</th>
+                      <th>P/L</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="paper-hub-positions"></tbody>
+                </table>
+              </div>
+              <h4 class="subhead">Complete trade history</h4>
+              <ul class="trade-log trade-log-tall" id="paper-hub-trades"></ul>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Manual portfolio tracker</h3>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-add-position">+ Position</button>
+              </div>
+              <div class="table-wrap">
+                <table class="portfolio-table">
+                  <thead>
+                    <tr>
+                      <th>Symbol</th>
+                      <th>Shares</th>
+                      <th>Avg cost</th>
+                      <th>Value</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="portfolio-body"></tbody>
+                </table>
+              </div>
+              <p class="portfolio-total">Total value: <strong id="portfolio-total">—</strong></p>
+            </div>
+
+            <div class="card card-wide">
+              <div class="card-head">
+                <h3>Notes & reminders</h3>
+              </div>
+              <form id="note-form">
+                <textarea
+                  id="note-input"
+                  rows="3"
+                  placeholder="Earnings dates, thesis, price alerts..."
+                ></textarea>
+                <div class="note-actions">
+                  <button type="submit" class="btn btn-primary">Save note</button>
+                </div>
+              </form>
+              <ul class="notes-list" id="notes-list"></ul>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Saved signals</h3>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-clear-saved">Clear all</button>
+              </div>
+              <ul class="saved-list" id="saved-list"></ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="trade-modal">
+      <form method="dialog" id="trade-form">
+        <h3 id="trade-modal-title">Paper trade</h3>
+        <p class="modal-hint" id="trade-modal-hint"></p>
+        <input type="hidden" name="symbol" />
+        <input type="hidden" name="side" />
+        <label>
+          Shares
+          <input type="number" name="shares" min="0.0001" step="any" required />
+        </label>
+        <p class="modal-price">Market price: <strong id="trade-modal-price">—</strong></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="trade-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="trade-submit">Execute</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="position-modal">
+      <form method="dialog" id="position-form">
+        <h3>Add position</h3>
+        <label>
+          Symbol
+          <input type="text" name="symbol" required maxlength="12" />
+        </label>
+        <label>
+          Shares
+          <input type="number" name="shares" min="0.0001" step="any" required />
+        </label>
+        <label>
+          Average cost (<span id="modal-currency">USD</span>)
+          <input type="number" name="cost" min="0" step="0.01" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="position-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>
